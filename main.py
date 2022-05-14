@@ -10,15 +10,7 @@ DETECTOR_MODEL_INPUT_SIZE = (224, 224)
 GENERATOR_MODEL_INPUT_SIZE = (128, 128)
 
 
-def generate_img(face_to_generate):
-    face_to_generate = process_image_to_input(face_to_generate, GENERATOR_MODEL_INPUT_SIZE)
-    generator_model = load_model('C:\dev\mask-off\server\generator_model/best.h5')
-    prediction = generator_model.predict(face_to_generate)
-
-    return prediction[0]
-
-
-def process_image_to_input(face, shape):
+def process_image_to_detector_input(face, shape):
     face = cv2.resize(face, shape)
     face = img_to_array(face)
     face = preprocess_input(face)
@@ -26,23 +18,34 @@ def process_image_to_input(face, shape):
     return face
 
 
-def find_faces(image):
-    face_cascade = cv2.CascadeClassifier('C:\dev\mask-off\server\detector_model\haarcascade_frontalface_default.xml')
+def process_image_to_generator_input(face, shape):
+    face = cv2.resize(face, shape)
+    face = (np.asarray(face)) / 255
+    face = np.expand_dims(face, axis=0)
+    return face
 
-    # Detect the faces
+
+def generate_img(face_to_generate):
+    generator_model = load_model('C:/dev/mask-off/server/generator_model/generator-all-augs.h5')
+    face_to_generate = process_image_to_generator_input(face_to_generate, GENERATOR_MODEL_INPUT_SIZE)
+    prediction = generator_model.predict(face_to_generate)
+    return prediction[0]
+
+
+def find_faces(image):
+    face_cascade = cv2.CascadeClassifier('C:/dev/mask-off/server/detector_model/haarcascade_frontalface_default.xml')
     return face_cascade.detectMultiScale(image, 1.1, 4)
 
 
 def main():
-    detector_model = load_model('C:\dev\mask-off\server\detector_model\detectorModel')
-    # image = cv2.imread('C:\mask\with_mask\with-mask-default-mask-seed0000.png')
-    image = cv2.imread('C:\mask\maksssksksss111.png')
+    detector_model = load_model('C:/dev/mask-off/server/detector_model/detectorModel')
+    # image = cv2.imread('C:/mask/with_mask/with-mask-default-mask-seed0000.png')
+    image = cv2.imread('C:/mask/maksssksksss111.png')
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    # Detect the faces
     faces = find_faces(image)
 
     # loop over the detections
-    for (x, y, w, h) in [faces[0]]:
+    for (x, y, w, h) in faces:
         # compute the (x, y)-coordinates of the bounding box for
         # the object
         (startX, startY, endX, endY) = (x, y, x + w, y + h)
@@ -53,7 +56,7 @@ def main():
         face_to_detect = face.copy()
         face_to_generate = face.copy()
 
-        face_to_detect = process_image_to_input(face_to_detect, DETECTOR_MODEL_INPUT_SIZE)
+        face_to_detect = process_image_to_detector_input(face_to_detect, DETECTOR_MODEL_INPUT_SIZE)
 
         # pass the face through the model to determine if the face
         # has a mask or not
