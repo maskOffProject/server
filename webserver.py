@@ -41,13 +41,14 @@ class MOServer(BaseHTTPRequestHandler):
         post_body = self.rfile.read(content_len)
 
         # Save image locally
-        path = './photo.png'
-        save_image(path, post_body)
+        # path = './photo.png'
+        # save_image(path, post_body)
 
         # Generate photo
-        res_path = generator.main(path)
-        with open(res_path, "rb") as result_image:
-            encoded_string = base64.b64encode(result_image.read())
+        res_photo = generator.main(post_body)
+        res_photo = res_photo[1]
+        # with open(res_path, "rb") as result_image:
+        encoded_string = base64.b64encode(res_photo)
  
         # Send response
         self.wfile.write(encoded_string)

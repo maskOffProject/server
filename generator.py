@@ -6,6 +6,7 @@ import cv2
 import matplotlib.pyplot as plt
 
 from PIL import Image
+import base64
 
 DETECTOR_MODEL_INPUT_SIZE = (224, 224)
 GENERATOR_MODEL_INPUT_SIZE = (128, 128)
@@ -37,14 +38,17 @@ def find_faces(image):
     return face_cascade.detectMultiScale(image, 1.1, 4)
 
 
-def main(path):
+def main(img):
     prototxtPath = './detector_model/deploy.prototxt.txt'
     weightsPath = './detector_model/res10_300x300_ssd_iter_140000.caffemodel'
     net = cv2.dnn.readNetFromCaffe(prototxtPath, weightsPath)
 
     detector_model = load_model('./detector_model/detectorModel')
     image = cv2.imread('./with-mask-default-mask-seed0006.png')
-    image = cv2.imread(path)
+    img = img.decode('ascii')
+    img = img.split(',')[1]
+    nparr = np.fromstring(base64.b64decode(img), np.uint8)
+    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     (h, w) = image.shape[:2]
@@ -98,7 +102,7 @@ def main(path):
 
     plt.imshow(image)
     plt.show()
-
-    res_path = './result.png'  
-    cv2.imwrite(res_path, cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
-    return res_path
+    buffer = cv2.imencode('.png', cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+    # res_path = './result.png'  
+    # cv2.imwrite(res_path, cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+    return buffer
