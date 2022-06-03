@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 
 DETECTOR_MODEL_INPUT_SIZE = (224, 224)
 GENERATOR_MODEL_INPUT_SIZE = (128, 128)
+BUFFER_PERCENTAGE = 0.05
 
 
 def process_image_to_detector_input(face, shape):
@@ -26,7 +27,7 @@ def process_image_to_generator_input(face, shape):
 
 
 def generate_img(face_to_generate):
-    generator_model = load_model('C:/dev/mask-off/server/generator_model/generator-all-augs.h5')
+    generator_model = load_model('C:/dev/mask-off/server/generator_model/best-with-black.h5')
     face_to_generate = process_image_to_generator_input(face_to_generate, GENERATOR_MODEL_INPUT_SIZE)
     prediction = generator_model.predict(face_to_generate)
     return prediction[0]
@@ -40,15 +41,20 @@ def find_faces(image):
 def main():
     detector_model = load_model('C:/dev/mask-off/server/detector_model/detectorModel')
     # image = cv2.imread('C:/mask/with_mask/with-mask-default-mask-seed0000.png')
-    image = cv2.imread('C:/mask/maksssksksss111.png')
+    # image = cv2.imread('C:/mask/maksssksksss111.png')
+    image = cv2.imread('C:/mask/Augmented_808_3391460.png')
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    height, width, depth = image.shape
     faces = find_faces(image)
-
     # loop over the detections
     for (x, y, w, h) in faces:
         # compute the (x, y)-coordinates of the bounding box for
         # the object
         (startX, startY, endX, endY) = (x, y, x + w, y + h)
+        startX = int(max(startX - width * BUFFER_PERCENTAGE, 0))
+        startY = int(max(startY - height * BUFFER_PERCENTAGE, 0))
+        endX = int(min(endX + width * BUFFER_PERCENTAGE, width))
+        endY = int(min(endY + height * BUFFER_PERCENTAGE, height))
 
         # extract the face ROI, convert it from BGR to RGB channel
         # ordering, resize it to 224x224, and preprocess it
@@ -61,12 +67,11 @@ def main():
         # pass the face through the model to determine if the face
         # has a mask or not
         (mask, withoutMask) = detector_model.predict(face_to_detect)[0]
-
         if mask > withoutMask:
             prediction = generate_img(face_to_generate)
             plt.imshow(prediction)
             plt.show()
-            prediction_origin_size = cv2.resize(prediction, (face.shape[0], face.shape[1]))
+            prediction_origin_size = cv2.resize(prediction, (face.shape[1], face.shape[0]))
             prediction_origin_size = prediction_origin_size * 255
             image[startY:endY, startX:endX] = prediction_origin_size
 
