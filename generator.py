@@ -1,5 +1,5 @@
 from keras.applications.mobilenet_v2 import preprocess_input
-from keras.preprocessing.image import img_to_array
+from keras.utils import img_to_array
 from keras.models import load_model
 import numpy as np
 import cv2
@@ -109,12 +109,12 @@ def proccing_photo(img, needPhotoProccing):
             (startX, startY, endX, endY) = box.astype("int")
             # ensure the bounding boxes fall within the dimensions of
             # the frame
-            # (startX, startY) = (max(0, startX - width * BUFFER_PERCENTAGE), max(0, startY-10))
-            # (endX, endY) = (min(w - 1, endX+10), min(h - 1, endY+10))
-            startX = int(max(startX - width * BUFFER_PERCENTAGE, 0))
-            startY = int(max(startY - height * BUFFER_PERCENTAGE, 0))
-            endX = int(min(endX + width * BUFFER_PERCENTAGE, width))
-            endY = int(min(endY + height * BUFFER_PERCENTAGE, height))
+            (startX, startY) = (max(0, startX- 10), max(0, startY-10))
+            (endX, endY) = (min(w - 1, endX+10), min(h - 1, endY+10))
+            # startX = int(max(startX - width * BUFFER_PERCENTAGE, 0))
+            # startY = int(max(startY - height * BUFFER_PERCENTAGE, 0))
+            # endX = int(min(endX + width * BUFFER_PERCENTAGE, width))
+            # endY = int(min(endY + height * BUFFER_PERCENTAGE, height))
 
             # extract the face ROI, convert it from BGR to RGB channel
             # ordering, resize it to 224x224, and preprocess it
@@ -223,4 +223,3 @@ def main(file):
         file = file.split(',')[1]
         res_photo = proccing_photo(file, True)[1]
         return res_photo
-    
