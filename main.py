@@ -5,7 +5,8 @@ from http.server import HTTPServer
 hostName = "localhost"
 serverPort = 8080
 
-if __name__ == "__main__":        
+
+if __name__ == "__main__":
     webServer = HTTPServer((hostName, serverPort), webserver.MOServer)
     print("Server started http://%s:%s" % (hostName, serverPort))
 
@@ -13,6 +14,3 @@ if __name__ == "__main__":
         webServer.serve_forever()
     except KeyboardInterrupt:
         pass
-
-    webServer.server_close()
-    print("Server stopped.")
