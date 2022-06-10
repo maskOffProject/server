@@ -46,7 +46,6 @@ class MOServer(BaseHTTPRequestHandler):
 
         # Generate photo
         res_photo = generator.main(post_body)
-        res_photo = res_photo[1]
         # with open(res_path, "rb") as result_image:
         encoded_string = base64.b64encode(res_photo)
  
