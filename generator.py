@@ -127,8 +127,6 @@ def proccing_photo(img, needPhotoProccing):
         any_parent_mask = any(is_polygon_overlapped(mask, (startX, startY)) for mask in masks_polygons)
 
         if len(face) > 0 and not any_parent_mask:
-            plt.imshow(face)
-            plt.show()
             face_to_detect = face.copy()
             face_to_generate = face.copy()
 
