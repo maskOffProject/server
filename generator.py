@@ -157,7 +157,7 @@ def proccing_photo(img, needPhotoProccing):
 def checkIfVideo(file):
     filetype = file.split(',')[0]
     print(filetype)
-    if 'mp4' in filetype:
+    if 'video' in filetype:
         return True
     else:
         return False
@@ -188,6 +188,7 @@ def main(file):
         writer = cv2.VideoWriter('output.mp4',-1,fps,(frame_width,frame_height))
         DROP = 3 
         dropCount = 0
+        stuckcount = 0
         # Loop until the end of the video
         while (cap.isOpened()):
             flag, frame = cap.read()
@@ -202,11 +203,14 @@ def main(file):
                     print (str(pos_frame) + " frames")
                 dropCount += 1
             else:
+                if stuckcount > 2:
+                    break
                 cap.set(cv2.CAP_PROP_POS_FRAMES, pos_frame-1)
                 # The next frame is not ready, so we try to read it again
                 print("frame is not ready")
                 # It is better to wait for a while for the next frame to be ready
                 cv2.waitKey(1000)
+                stuckcount += 1
             if cv2.waitKey(10) == 27:
                 break    
             if cap.get(cv2.CAP_PROP_POS_FRAMES) == cap.get(cv2.CAP_PROP_FRAME_COUNT):
