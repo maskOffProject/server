@@ -1,5 +1,5 @@
 from keras.applications.mobilenet_v2 import preprocess_input
-from keras.utils import img_to_array
+from keras.preprocessing.image import img_to_array
 from keras.models import load_model
 import numpy as np
 import cv2
@@ -10,10 +10,12 @@ import base64
 
 from tensorflow.keras.preprocessing.image import load_img
 from numpy import expand_dims
+from shapely.geometry import Polygon
 
 DETECTOR_MODEL_INPUT_SIZE = (224, 224)
 GENERATOR_MODEL_INPUT_SIZE = (128, 128)
 BUFFER_PERCENTAGE = 0.05
+
 
 def process_image_to_detector_input(face, shape):
     face = cv2.resize(face, shape)
@@ -36,6 +38,7 @@ def generate_img(face_to_generate):
     prediction = generator_model.predict(face_to_generate)
     return prediction[0]
 
+
 # load an image
 def load_image(filename, size=(256,256)):
 	# load image with the preferred size
@@ -47,6 +50,7 @@ def load_image(filename, size=(256,256)):
 	# reshape to 1 sample
 	pixels = expand_dims(pixels, 0)
 	return pixels
+
 
 def generate_img_p2p(face_to_generate):
     # save photo
@@ -64,9 +68,16 @@ def generate_img_p2p(face_to_generate):
     # plot the image
     return gen_image[0]
 
+
 def find_faces(image):
     face_cascade = cv2.CascadeClassifier('./detector_model/haarcascade_frontalface_default.xml')
     return face_cascade.detectMultiScale(image, 1.1, 4)
+
+
+def is_polygon_overlapped(first_polygon, second_start_coordinates):
+    (startX, startY, endX, endY) = first_polygon
+    (x, y) = second_start_coordinates
+    return startX < x < endX and startY < y < endY
 
 
 def proccing_photo(img, needPhotoProccing):
@@ -75,7 +86,7 @@ def proccing_photo(img, needPhotoProccing):
     net = cv2.dnn.readNetFromCaffe(prototxtPath, weightsPath)
 
     detector_model = load_model('./detector_model/detectorModel')
-    image = cv2.imread('./with-mask-default-mask-seed0006.png')
+    # image = cv2.imread('./with-mask-default-mask-seed0006.png')
     if needPhotoProccing:
         nparr = np.fromstring(base64.b64decode(img), np.uint8)
         image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -83,6 +94,8 @@ def proccing_photo(img, needPhotoProccing):
         image = img
 
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    image_copy = image.copy()
+
     (h, w) = image.shape[:2]
     # construct a blob from the image
     blob = cv2.dnn.blobFromImage(image, 1.0, (300, 300),
@@ -90,36 +103,32 @@ def proccing_photo(img, needPhotoProccing):
 
     net.setInput(blob)
     detections = net.forward()
+    detections = detections[0, 0]
+    detections = list(filter(lambda detection: detection[2] > 0.3, detections))
+    detections.sort(key=lambda detection: detection[2], reverse=True)
+    masks_polygons = []
 
     # loop over the detections
-    for i in range(0, detections.shape[2]):
+    for strong_detection in detections:
+        print("Face Detected!")
+        # compute the (x, y)-coordinates of the bounding box for
+        # the object
+        box = strong_detection[3:7] * np.array([w, h, w, h])
+        (startX, startY, endX, endY) = box.astype("int")
+        # face_polygon = Polygon([(startX, startY), (startX, endY), (endX, endY), (endX, startY)])
+        # ensure the bounding boxes fall within the dimensions of
+        # the frame
+        (startX, startY) = (max(0, startX-10), max(0, startY-10))
+        (endX, endY) = (min(w - 1, endX+10), min(h - 1, endY+10))
 
-        # extract the confidence (i.e., probability) associated with
-        # the detection
-        confidence = detections[0, 0, i, 2]
-        # filter out weak detections by ensuring the confidence is
-        # greater than the minimum confidence
-        # if confidence > 0.5:
-        if confidence > 0.3:
-            print("Face Detected!")
+        # extract the face ROI, convert it from BGR to RGB channel
+        # ordering, resize it to 224x224, and preprocess it
+        face = image[startY:endY, startX:endX]
+        any_parent_mask = any(is_polygon_overlapped(mask, (startX, startY)) for mask in masks_polygons)
 
-            # compute the (x, y)-coordinates of the bounding box for
-            # the object
-            box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
-            (startX, startY, endX, endY) = box.astype("int")
-            # ensure the bounding boxes fall within the dimensions of
-            # the frame
-            (startX, startY) = (max(0, startX- 10), max(0, startY-10))
-            (endX, endY) = (min(w - 1, endX+10), min(h - 1, endY+10))
-            # startX = int(max(startX - width * BUFFER_PERCENTAGE, 0))
-            # startY = int(max(startY - height * BUFFER_PERCENTAGE, 0))
-            # endX = int(min(endX + width * BUFFER_PERCENTAGE, width))
-            # endY = int(min(endY + height * BUFFER_PERCENTAGE, height))
-
-            # extract the face ROI, convert it from BGR to RGB channel
-            # ordering, resize it to 224x224, and preprocess it
-            face = image[startY:endY, startX:endX]
-
+        if len(face) > 0 and not any_parent_mask:
+            plt.imshow(face)
+            plt.show()
             face_to_detect = face.copy()
             face_to_generate = face.copy()
 
@@ -127,23 +136,15 @@ def proccing_photo(img, needPhotoProccing):
             # pass the face through the model to determine if the face
             # has a mask or not
             (mask, withoutMask) = detector_model.predict(face_to_detect)[0]
-            # plt.imshow(face)
-            # plt.show()
             if mask > withoutMask:
                 print("Mask Detected!")
-
-                # prediction = generate_img_p2p(face_to_generate)
                 prediction = generate_img(face_to_generate)
-                # plt.imshow(prediction)
-                # plt.show()
                 prediction_origin_size = cv2.resize(prediction, (face.shape[1], face.shape[0]))
                 prediction_origin_size = prediction_origin_size * 255
-                image[startY:endY, startX:endX] = prediction_origin_size
+                image_copy[startY:endY, startX:endX] = prediction_origin_size
+                masks_polygons.append((startX, startY, endX, endY))
 
-
-    # plt.imshow(image)
-    # plt.show()
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    image = cv2.cvtColor(image_copy, cv2.COLOR_RGB2BGR)
     if not needPhotoProccing:
         return image
     
@@ -151,6 +152,7 @@ def proccing_photo(img, needPhotoProccing):
     # res_path = './result.png'  
     # cv2.imwrite(res_path, cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
     return buffer
+
 
 def checkIfVideo(file):
     filetype = file.split(',')[0]
