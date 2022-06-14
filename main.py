@@ -2,8 +2,8 @@
 import webserver
 from http.server import HTTPServer
 
-hostName = "localhost"
-serverPort = 8080
+hostName = ""
+serverPort = 3000
 
 
 if __name__ == "__main__":
